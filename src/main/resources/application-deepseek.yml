@@ -1,0 +1,28 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration
+
+  ai:
+    # 禁用 Transformers ONNX 本地 Embedding（会从 GitHub 下载模型）
+    # 使用 OpenAI 兼容的 Embedding API
+    embedding:
+      transformer:
+        enabled: false
+
+    # DeepSeek API（兼容 OpenAI 协议）
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.7
+
+    # Chroma 向量库
+    vectorstore:
+      chroma:
+        initialize-schema: true
+        client:
+          host: http://localhost
+          port: 8000

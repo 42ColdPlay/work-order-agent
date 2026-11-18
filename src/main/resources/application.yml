@@ -1,0 +1,96 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: work-order-agent
+
+  # 本地敏感配置：application-local.yml 已被 .gitignore 忽略，不会提交到仓库
+  # 文件不存在时静默跳过，不影响他人克隆或生产部署
+  config:
+    import: optional:file:./application-local.yml
+
+  # =========================================
+  # MySQL 数据源
+  # =========================================
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/work_order?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # =========================================
+  # JPA
+  # =========================================
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # =========================================
+  # Redis
+  # =========================================
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 0
+
+  ai:
+    # 禁用 Transformers ONNX 本地 Embedding（会从 GitHub 下载模型）
+    # 改用 Ollama 的 nomic-embed-text
+    embedding:
+      transformer:
+        enabled: false
+
+    # =========================================
+    # AI 模型配置（两种模式二选一）
+    # =========================================
+
+    # --- 默认：本地 Qwen2.5:7b（备选）---
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: qwen2.5:7b
+          temperature: 0.7
+
+    # --- Embedding 模型 ---
+    # 使用 Ollama 本地的 nomic-embed-text
+    ollama.embedding:
+      base-url: http://localhost:11434
+      options:
+        model: nomic-embed-text
+
+    # --- Chroma 向量库 ---
+    vectorstore:
+      chroma:
+        initialize-schema: true
+        client:
+          host: http://localhost
+          port: 8000
+
+# =========================================
+# 日志配置
+# =========================================
+logging:
+  level:
+    com.agent: DEBUG
+    org.springframework.ai: INFO
+
+# =========================================
+# JWT 配置
+# =========================================
+jwt:
+  secret: ${JWT_SECRET:}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}

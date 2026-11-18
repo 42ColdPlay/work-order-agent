@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  # =========================================
+  # Chroma 向量数据库
+  # =========================================
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: agent-chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+  # =========================================
+  # Ollama（可选——如果已有本地 Ollama 可跳过）
+  # =========================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    # 首次部署需要手动 pull 模型：
+    #   docker exec -it agent-ollama ollama pull qwen2.5:7b
+    #   docker exec -it agent-ollama ollama pull nomic-embed-text
+
+  # =========================================
+  # 智能工单助手 Agent 应用
+  # =========================================
+  app:
+    image: work-order-agent:latest
+    container_name: agent-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # 使用 DeepSeek API
+      # - SPRING_AI_OPENAI_API_KEY=${DEEPSEEK_API_KEY}
+      # - SPRING_AI_OPENAI_BASE_URL=https://api.deepseek.com
+      # - SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL=deepseek-chat
+
+      # 使用本地 Ollama
+      - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
+      - SPRING_AI_VECTORSTORE_CHROMA_CLIENT_HOST=chroma
+      - SPRING_AI_VECTORSTORE_CHROMA_CLIENT_PORT=8000
+    depends_on:
+      - chroma
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
+  ollama-data:
