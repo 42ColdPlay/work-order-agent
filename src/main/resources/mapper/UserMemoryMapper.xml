@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.agent.memory.mapper.UserMemoryMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, content, category, importance, status, vector_id,
+        source_conversation_id, created_at, updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.agent.memory.entity.UserMemoryEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_memory (user_id, content, category, importance, status, vector_id,
+                                 source_conversation_id, created_at, updated_at)
+        VALUES (#{userId}, #{content}, #{category}, #{importance}, #{status}, #{vectorId},
+                #{sourceConversationId},
+                COALESCE(#{createdAt,jdbcType=TIMESTAMP}, NOW()),
+                COALESCE(#{updatedAt,jdbcType=TIMESTAMP}, NOW()))
+    </insert>
+
+    <select id="findActiveByUserId" resultType="com.agent.memory.entity.UserMemoryEntity">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user_memory
+        WHERE user_id = #{userId}
+        AND status = #{status}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findByVectorId" resultType="com.agent.memory.entity.UserMemoryEntity">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user_memory
+        WHERE vector_id = #{vectorId}
+        LIMIT 1
+    </select>
+
+    <update id="updateStatus">
+        UPDATE user_memory
+        SET status     = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByUserId">
+        DELETE
+        FROM user_memory
+        WHERE user_id = #{userId}
+    </delete>
+
+</mapper>
