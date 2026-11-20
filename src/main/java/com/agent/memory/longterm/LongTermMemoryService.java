@@ -3,7 +3,7 @@ package com.agent.memory.longterm;
 import com.agent.memory.MemoryProperties;
 import com.agent.memory.entity.MemoryStatus;
 import com.agent.memory.entity.UserMemoryEntity;
-import com.agent.memory.repository.UserMemoryRepository;
+import com.agent.memory.mapper.UserMemoryMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -43,14 +43,14 @@ public class LongTermMemoryService {
     private static final double CONFLICT_SEARCH_THRESHOLD = 0.5;
 
     private final VectorStore vectorStore;
-    private final UserMemoryRepository repository;
+    private final UserMemoryMapper memoryMapper;
     private final MemoryProperties properties;
 
     public LongTermMemoryService(VectorStore vectorStore,
-                                 UserMemoryRepository repository,
+                                 UserMemoryMapper memoryMapper,
                                  MemoryProperties properties) {
         this.vectorStore = vectorStore;
-        this.repository = repository;
+        this.memoryMapper = memoryMapper;
         this.properties = properties;
     }
 
@@ -171,7 +171,7 @@ public class LongTermMemoryService {
         entity.setSourceConversationId(conversationId);
         entity.setStatus(MemoryStatus.ACTIVE);
         try {
-            repository.save(entity);
+            memoryMapper.insert(entity);
         } catch (Exception e) {
             log.error("长期记忆落库失败（向量库已写入，可能出现不可见记忆）: {}", e.getMessage());
         }
@@ -182,7 +182,7 @@ public class LongTermMemoryService {
         if (isBlank(userId)) {
             return List.of();
         }
-        return repository.findTop50ByUserIdAndStatusOrderByCreatedAtDesc(userId, MemoryStatus.ACTIVE)
+        return memoryMapper.findActiveByUserId(userId, MemoryStatus.ACTIVE, 50)
                 .stream()
                 .map(entity -> new MemoryItem(
                         entity.getContent(),
@@ -204,7 +204,7 @@ public class LongTermMemoryService {
         } catch (Exception e) {
             log.warn("清除向量库记忆失败，继续清理数据库: {}", e.getMessage());
         }
-        long deleted = repository.deleteByUserId(userId);
+        long deleted = memoryMapper.deleteByUserId(userId);
         log.info("已清除用户 [{}] 的长期记忆 {} 条", userId, deleted);
     }
 
@@ -229,10 +229,8 @@ public class LongTermMemoryService {
         } catch (Exception e) {
             log.warn("删除旧记忆向量失败: {}", e.getMessage());
         }
-        repository.findByVectorId(vectorId).ifPresent(old -> {
-            old.setStatus(MemoryStatus.SUPERSEDED);
-            old.setUpdatedAt(LocalDateTime.now());
-            repository.save(old);
+        memoryMapper.findByVectorId(vectorId).ifPresent(old -> {
+            memoryMapper.updateStatus(old.getId(), MemoryStatus.SUPERSEDED);
             log.info("记忆已被新事实取代: {}", old.getContent());
         });
     }

@@ -2,12 +2,11 @@ package com.agent.memory.chat;
 
 import com.agent.memory.MemoryProperties;
 import com.agent.memory.entity.ChatMessageEntity;
-import com.agent.memory.repository.ChatMessageRepository;
+import com.agent.memory.mapper.ChatMessageMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,16 +34,16 @@ public class HybridChatMemory implements ChatMemory {
 
     private final StringRedisTemplate redisTemplate;
     private final ChatMessageCodec codec;
-    private final ChatMessageRepository repository;
+    private final ChatMessageMapper messageMapper;
     private final MemoryProperties properties;
 
     public HybridChatMemory(StringRedisTemplate redisTemplate,
                             ChatMessageCodec codec,
-                            ChatMessageRepository repository,
+                            ChatMessageMapper messageMapper,
                             MemoryProperties properties) {
         this.redisTemplate = redisTemplate;
         this.codec = codec;
-        this.repository = repository;
+        this.messageMapper = messageMapper;
         this.properties = properties;
     }
 
@@ -101,7 +100,7 @@ public class HybridChatMemory implements ChatMemory {
         } catch (Exception e) {
             log.warn("清除 Redis 会话记忆失败，继续清理数据库: {}", e.getMessage());
         }
-        repository.deleteByConversationId(conversationId);
+        messageMapper.deleteByConversationId(conversationId);
     }
 
     private void persist(List<ChatMessageEntity> rows) {
@@ -109,7 +108,7 @@ public class HybridChatMemory implements ChatMemory {
             return;
         }
         try {
-            repository.saveAll(rows);
+            messageMapper.insertBatch(rows);
         } catch (Exception e) {
             // 落库失败时降级为纯 Redis 缓存，至少保证当前会话还能继续
             log.error("对话流水落库失败，降级为仅 Redis 缓存: {}", e.getMessage());
@@ -142,8 +141,7 @@ public class HybridChatMemory implements ChatMemory {
             return List.of();
         }
         try {
-            List<ChatMessageEntity> rows = repository.findByConversationIdOrderByIdDesc(
-                    conversationId, PageRequest.of(0, window));
+            List<ChatMessageEntity> rows = messageMapper.findRecent(conversationId, window);
             Collections.reverse(rows);
             List<String> payloads = rows.stream().map(ChatMessageEntity::getPayload).toList();
             return decode(payloads);

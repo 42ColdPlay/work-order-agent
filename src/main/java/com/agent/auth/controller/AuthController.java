@@ -4,7 +4,7 @@ import com.agent.auth.dto.AuthResponse;
 import com.agent.auth.dto.LoginRequest;
 import com.agent.auth.dto.RegisterRequest;
 import com.agent.auth.entity.User;
-import com.agent.auth.repository.UserRepository;
+import com.agent.auth.mapper.UserMapper;
 import com.agent.auth.security.JwtAuthFilter;
 import com.agent.auth.security.JwtTokenProvider;
 import org.springframework.http.HttpStatus;
@@ -18,16 +18,16 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtAuthFilter jwtAuthFilter;
 
-    public AuthController(UserRepository userRepository,
+    public AuthController(UserMapper userMapper,
                           PasswordEncoder passwordEncoder,
                           JwtTokenProvider jwtTokenProvider,
                           JwtAuthFilter jwtAuthFilter) {
-        this.userRepository = userRepository;
+        this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.jwtAuthFilter = jwtAuthFilter;
@@ -35,7 +35,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userMapper.countByUsername(request.getUsername()) > 0) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "用户名已存在"));
         }
@@ -44,7 +44,7 @@ public class AuthController {
         String displayName = request.getDisplayName() != null ? request.getDisplayName() : request.getUsername();
 
         User user = new User(request.getUsername(), encodedPwd, displayName);
-        user = userRepository.save(user);
+        userMapper.insert(user);
 
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
         return ResponseEntity.ok(new AuthResponse(token, user.getUsername(), user.getDisplayName(), user.getRole()));
@@ -52,7 +52,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        User user = userMapper.findByUsername(request.getUsername()).orElse(null);
         if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "用户名或密码错误"));

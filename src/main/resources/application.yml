@@ -20,16 +20,12 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # =========================================
-  # JPA
+  # 建表脚本（替代 JPA ddl-auto，脚本内使用 IF NOT EXISTS 保证幂等）
   # =========================================
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
 
   # =========================================
   # Redis
@@ -79,6 +75,16 @@ spring:
         client:
           host: http://localhost
           port: 8000
+
+# =========================================
+# MyBatis
+# =========================================
+mybatis:
+  # Mapper XML 位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    # 数据库下划线字段自动映射到 Java 驼峰属性
+    map-underscore-to-camel-case: true
 
 # =========================================
 # RAG 检索配置

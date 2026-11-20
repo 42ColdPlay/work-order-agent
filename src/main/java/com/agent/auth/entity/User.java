@@ -1,29 +1,22 @@
 package com.agent.auth.entity;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "users")
+/**
+ * 用户表（users）实体，字段与表结构一一对应，由 MyBatis 映射。
+ */
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false)
     private String password;
 
-    @Column(name = "display_name", length = 100)
     private String displayName;
 
-    @Column(nullable = false, length = 20)
     private String role = "USER";
 
-    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public User() {}
