@@ -7,6 +7,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,12 +25,12 @@ public class VectorStoreService {
     private static final Logger log = LoggerFactory.getLogger(VectorStoreService.class);
 
     private final VectorStore vectorStore;
+    private final double similarityThreshold;
 
-    // 默认相似度阈值
-    private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.75;
-
-    public VectorStoreService(VectorStore vectorStore) {
+    public VectorStoreService(VectorStore vectorStore,
+                              @Value("${rag.similarity-threshold:0.5}") double similarityThreshold) {
         this.vectorStore = vectorStore;
+        this.similarityThreshold = similarityThreshold;
     }
 
     /**
@@ -55,7 +56,7 @@ public class VectorStoreService {
         SearchRequest request = SearchRequest.builder()
                 .query(query)
                 .topK(topK)
-                .similarityThreshold(DEFAULT_SIMILARITY_THRESHOLD)
+                .similarityThreshold(similarityThreshold)
                 .build();
 
         List<Document> results = vectorStore.similaritySearch(request);

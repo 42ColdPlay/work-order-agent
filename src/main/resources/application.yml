@@ -81,6 +81,47 @@ spring:
           port: 8000
 
 # =========================================
+# RAG 检索配置
+# =========================================
+rag:
+  # 相似度阈值：过高会大量过滤掉本来相关的内容（召回不足），过低会引入噪声
+  # 中文语义检索建议 0.4 ~ 0.6，按实际效果调
+  similarity-threshold: 0.5
+
+# =========================================
+# 记忆模块配置
+# =========================================
+memory:
+  # 短期记忆：Redis 热缓存 + MySQL 流水
+  chat:
+    # Redis key 过期时间；过期后由 MySQL 自动重建
+    ttl: 7d
+    # Redis 保留与重建的最大条数
+    max-messages: 100
+    # 注入模型的 token 预算（粗略估算），超出从最旧的消息开始丢弃
+    token-budget: 3000
+    # 是否把消息流水落 MySQL。关闭后退化为纯 Redis 窗口
+    persist: true
+
+  # 长期记忆：每轮对话后异步抽取事实，存向量库 + MySQL
+  longterm:
+    enabled: true
+    # 关闭可省掉每轮一次额外的 LLM 调用
+    extraction-enabled: true
+    top-k: 5
+    # 召回阈值：低于该相似度的记忆不注入 prompt
+    recall-threshold: 0.45
+    # 相似度落在 [conflict-threshold, duplicate-threshold) 视为同一事实的新版本，
+    # 旧记忆标记 SUPERSEDED 并由新记忆取代
+    conflict-threshold: 0.8
+    # 达到该阈值视为完全重复，直接跳过
+    duplicate-threshold: 0.93
+    max-facts-per-turn: 5
+    # 用户消息短于该长度时跳过抽取
+    min-message-length: 8
+    executor-pool-size: 2
+
+# =========================================
 # 日志配置
 # =========================================
 logging:
